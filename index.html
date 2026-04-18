@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Photo uploader</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; padding: 1.5rem; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 1.5rem; }
+    .drop-zone { border: 2px dashed #ccc; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; background: #f9f9f9; margin-bottom: 1rem; }
+    .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
+    .thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb button { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 22px; height: 22px; color: white; cursor: pointer; font-size: 14px; }
+    progress { width: 100%; margin-bottom: 1rem; display: none; }
+    #status { font-size: 14px; color: #555; margin-bottom: 1rem; }
+    button#uploadBtn { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; background: white; font-size: 15px; font-weight: 500; cursor: pointer; }
+    button#uploadBtn:disabled { opacity: 0.4; }
+    input[type=file] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Photo uploader</h1>
+
+  <div class="drop-zone" id="dropZone">
+    <p>Tap to pick photos</p>
+    <small>Supports JPG, PNG, HEIC</small>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div class="preview-grid" id="previewGrid"></div>
+  <progress id="progress" max="100" value="0"></progress>
+  <div id="status">No photos selected</div>
+  <button id="uploadBtn" disabled>Upload photos</button>
+
+  <script>
+    const API_URL = 'https://your-api.com/upload'; // <-- change this
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const previewGrid = document.getElementById('previewGrid');
+    const status = document.getElementById('status');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progress = document.getElementById('progress');
+
+    let selectedFiles = [];
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => addFiles(e.target.files));
+
+    function addFiles(files) {
+      for (const f of files) {
+        if (f.type.startsWith('image/')) selectedFiles.push(f);
+      }
+      renderPreviews();
+    }
+
+    function renderPreviews() {
+      previewGrid.innerHTML = '';
+      selectedFiles.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f);
+        const btn = document.createElement('button');
+        btn.textContent = '×';
+        btn.onclick = () => { selectedFiles.splice(i, 1); renderPreviews(); };
+        div.append(img, btn);
+        previewGrid.appendChild(div);
+      });
+      const n = selectedFiles.length;
+      uploadBtn.disabled = n === 0;
+      status.textContent = n === 0 ? 'No photos selected' : `${n} photo${n > 1 ? 's' : ''} ready`;
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      progress.style.display = 'block';
+      uploadBtn.disabled = true;
+      let done = 0;
+
+      for (const file of selectedFiles) {
+        status.textContent = `Uploading ${file.name}...`;
+        const formData = new FormData();
+        formData.append('photo', file);
+
+        try {
+          const res = await fetch(API_URL, { method: 'POST', body: formData });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+          status.textContent = `Error: ${err.message}`;
+          progress.style.display = 'none';
+          uploadBtn.disabled = false;
+          return;
+        }
+
+        done++;
+        progress.value = Math.round((done / selectedFiles.length) * 100);
+      }
+
+      status.textContent = `${done} photo${done > 1 ? 's' : ''} uploaded!`;
+      selectedFiles = [];
+      renderPreviews();
+      setTimeout(() => { progress.style.display = 'none'; progress.value = 0; }, 2000);
+    });
+  </script>
+</body>
+</html>
