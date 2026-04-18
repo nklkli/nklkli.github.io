@@ -1,6 +1,6 @@
 {
-  "name": "Photo uploader",
-  "short_name": "Uploader",
+  "name": "Климов-Фото",
+  "short_name": "Климов-Фото",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
